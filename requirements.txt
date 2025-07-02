@@ -1,0 +1,15 @@
+# 기본 패키지
+pandas>=1.3.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+transformers>=4.20.0
+
+# PyTorch (CPU 버전)
+torch>=1.12.0
+
+# CUDA 버전을 사용하려면 아래 명령어로 설치:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118  # CUDA 11.8
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  # CUDA 12.1
+
+# 선택적 패키지 (성능 향상)
+# accelerate>=0.20.0  # Hugging Face 가속 라이브러리
