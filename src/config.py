@@ -39,6 +39,7 @@ class DataConfig:
     test_file: str = 'data/test.csv'
     sample_submission_file: str = 'data/sample_submission.csv'
     submission_file: str = 'submission.csv'
+    submission_dir: str = 'submissions'
     encoding: str = 'utf-8-sig'
     
     # Data processing parameters

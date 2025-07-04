@@ -40,10 +40,22 @@ data/test.csv
 data/sample_submission.csv
 
 # 출력 파일
-submission*.csv
+submission.csv
+submissions/*.csv
+submissions/submission_*.csv
+# Keep submission metadata for tracking
+!submissions/submissions_metadata.json
+!submissions/submission_report.json
+
+# Logs
+logs/
 *.log
 model_output.log
 test_output.log
+
+# Results and model outputs
+results/
+models/
 
 # IDE
 .vscode/

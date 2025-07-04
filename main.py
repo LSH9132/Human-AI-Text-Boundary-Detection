@@ -137,11 +137,25 @@ def run_modular_pipeline(config_env: str = "default", log_level: str = "INFO"):
         # === 4. SAVE RESULTS ===
         logger.info("\n=== 4. SAVE RESULTS ===")
         
-        # Prepare and save submission
+        # Prepare submission
         submission_df = data_processor.prepare_submission_format(test_df, predictions)
-        data_processor.save_submission(submission_df)
         
-        logger.info(f"Submission saved to: {config.data.submission_file}")
+        # Save with version management
+        from src.submission_manager import create_submission_manager
+        
+        submission_manager = create_submission_manager(config.data.submission_dir)
+        versioned_path = submission_manager.save_submission(
+            submission_df,
+            config=config.to_dict(),
+            metrics={'oof_auc': oof_auc, 'model_count': len(model_paths)},
+            description=f"{config_env} environment - {len(model_paths)} fold ensemble"
+        )
+        
+        # Also save latest for compatibility
+        submission_df.to_csv(config.data.submission_file, index=False)
+        
+        logger.info(f"Versioned submission: {versioned_path}")
+        logger.info(f"Latest submission: {config.data.submission_file}")
         
         # === 5. EVALUATION & REPORTING ===
         logger.info("\n=== 5. EVALUATION & REPORTING ===")

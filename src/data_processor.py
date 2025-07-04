@@ -195,10 +195,42 @@ class DataProcessor:
         
         return submission_df
     
-    def save_submission(self, submission_df: pd.DataFrame) -> None:
-        """Save submission file."""
-        submission_df.to_csv(self.data_config.submission_file, index=False)
-        self.logger.info(f"Submission saved to {self.data_config.submission_file}")
+    def save_submission(self, submission_df: pd.DataFrame, 
+                       filename: Optional[str] = None) -> str:
+        """Save submission file with versioning."""
+        import os
+        import datetime
+        
+        # Create submissions directory
+        os.makedirs(self.data_config.submission_dir, exist_ok=True)
+        
+        if filename is None:
+            # Generate timestamped filename
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            
+            # Try to get git commit hash
+            try:
+                import subprocess
+                result = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], 
+                                      capture_output=True, text=True)
+                git_hash = result.stdout.strip() if result.returncode == 0 else "unknown"
+            except:
+                git_hash = "unknown"
+            
+            filename = f"submission_{timestamp}_{git_hash}.csv"
+        
+        # Save versioned file
+        versioned_path = os.path.join(self.data_config.submission_dir, filename)
+        submission_df.to_csv(versioned_path, index=False)
+        
+        # Also save as latest submission for compatibility
+        latest_path = self.data_config.submission_file
+        submission_df.to_csv(latest_path, index=False)
+        
+        self.logger.info(f"Submission saved to: {versioned_path}")
+        self.logger.info(f"Latest submission: {latest_path}")
+        
+        return versioned_path
     
     def get_data_statistics(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Dict[str, any]:
         """Get comprehensive data statistics."""
