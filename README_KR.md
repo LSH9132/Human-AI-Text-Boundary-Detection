@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🤖 AI Text Boundary Detection
+# 🤖 AI 텍스트 경계 탐지 시스템
 
 ### 언어 선택 | Language Selection
 [🇰🇷 **한국어**](README.md) | [🇺🇸 **English**](README_EN.md)
@@ -462,3 +462,5 @@ calibrated_pred = torch.sigmoid(logits / temperature)
 ❤️로 만든 AI 연구팀
 
 [🐛 버그 신고](../../issues) • [✨ 기능 요청](../../issues) • [📚 문서](../../wiki)
+
+</div>
