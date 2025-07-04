@@ -1,15 +1,20 @@
-# 기본 패키지
-pandas>=1.3.0
-numpy>=1.21.0
-scikit-learn>=1.0.0
-transformers>=4.20.0
+# AI Text Detection Project Dependencies
+# Core ML packages
+pandas>=2.3.0
+numpy>=2.2.0
+scikit-learn>=1.7.0
+transformers>=4.53.0
 
-# PyTorch (CPU 버전)
-torch>=1.12.0
+# PyTorch (CPU version - for GPU use different index)
+torch>=2.7.0+cpu
 
-# CUDA 버전을 사용하려면 아래 명령어로 설치:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118  # CUDA 11.8
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  # CUDA 12.1
+# Utilities
+tqdm>=4.67.0
 
-# 선택적 패키지 (성능 향상)
-# accelerate>=0.20.0  # Hugging Face 가속 라이브러리
+# Optional packages for enhanced functionality
+# matplotlib>=3.7.0  # For plotting (optional)
+# seaborn>=0.12.0    # For enhanced plots (optional)
+
+# Installation instructions:
+# For CPU: pip install -r requirements.txt
+# For GPU: pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cu121

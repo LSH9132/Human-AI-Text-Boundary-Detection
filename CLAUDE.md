@@ -102,3 +102,85 @@ source .venv/bin/activate      # Linux/Mac
 - `simple_test.py` - Quick environment validation
 - `test_model.py` - Sample model training for testing
 - `install_packages.py` - Package installation helper
+
+## Project Management and Git Workflow
+
+### Automated Workflow Rules
+
+**IMPORTANT**: When working on this project, ALWAYS use the automated Git workflow system for proper version control and logging.
+
+#### Before Making Changes
+```bash
+# Start a new feature branch automatically
+python project_manager.py start --feature "feature-name" "Description of the work"
+```
+
+#### After Completing Work
+```bash
+# Auto-commit changes and create structured commits
+python project_manager.py complete --feature "feature-name"
+
+# Deploy to main branch (merge and cleanup)
+python project_manager.py deploy --feature "feature-name"
+```
+
+#### Quick Workflow (All-in-One)
+```bash
+# For simple changes - creates branch, commits, and merges automatically
+python project_manager.py auto "Description of changes made"
+```
+
+#### Check Project Status
+```bash
+# View current Git status and project health
+python project_manager.py status
+```
+
+### Modular Architecture (New Structure)
+
+The project has been refactored into a modular structure:
+
+```
+src/
+├── config.py           # Centralized configuration management
+├── data_processor.py   # Data loading and preprocessing
+├── model_trainer.py    # Model training and cross-validation
+├── predictor.py        # Prediction and context adjustment
+├── evaluator.py        # Metrics calculation and evaluation
+└── utils.py           # Git automation and logging utilities
+
+scripts/
+├── train.py           # Training script
+├── predict.py         # Prediction script
+└── evaluate.py        # Evaluation script
+
+models/                # Saved model checkpoints
+logs/                  # Structured logging output
+```
+
+### Git Workflow Automation Features
+
+1. **Feature Branch Creation**: Automatically creates `feature/name` branches
+2. **Structured Commits**: Follows conventional commit format with Claude attribution
+3. **Logging**: All actions logged to `logs/project_events.jsonl`
+4. **Status Monitoring**: Real-time project health monitoring
+5. **Auto-merge**: Safe merging to main branch with cleanup
+
+### Command Guidelines
+
+#### When Starting New Work:
+- ALWAYS use `python project_manager.py start --feature "name" "description"`
+- Choose descriptive feature names (e.g., "data-preprocessing", "model-optimization")
+
+#### When Making Changes:
+- Work normally in your feature branch
+- The system tracks all file changes automatically
+
+#### When Completing Work:
+- Use `python project_manager.py complete --feature "name"` for complex features
+- Use `python project_manager.py auto "description"` for simple changes
+
+#### Logging and Monitoring:
+- All Git operations are logged with timestamps
+- System information is automatically captured
+- Project events are stored in structured JSON format
