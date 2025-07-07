@@ -1,4 +1,6 @@
 # AI Text Detection Project Dependencies
+# 🐳 Docker-optimized requirements for production deployment
+
 # Core ML packages
 pandas>=2.0.0
 numpy>=1.24.0
@@ -7,19 +9,30 @@ transformers>=4.35.0
 datasets>=2.14.0
 
 # PyTorch - GPU optimized versions
-torch>=2.1.0
-torchvision>=0.16.0
-torchaudio>=2.1.0
+# NOTE: torch, torchvision, torchaudio are installed separately in Dockerfile
+# with specific CUDA 12.1 index for H100 compatibility
 
 # Utilities
 tqdm>=4.65.0
 tokenizers>=0.15.0
+
+# Additional dependencies for production
+accelerate>=0.24.0        # For mixed precision and device management
+safetensors>=0.4.0        # For secure model serialization
+huggingface-hub>=0.17.0   # For model downloading
 
 # Optional packages for enhanced functionality
 # matplotlib>=3.7.0  # For plotting (optional)
 # seaborn>=0.12.0    # For enhanced plots (optional)
 
 # Installation instructions:
-# For CPU: pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cpu
-# For GPU (CUDA 12.1): pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cu121
-# For H100/vast.ai: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# For Docker: Dependencies are automatically installed in Dockerfile
+# For local development:
+#   CPU: pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cpu
+#   GPU (CUDA 12.1): pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cu121
+#   H100/vast.ai: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Docker deployment commands:
+# Build: docker build -t ai-text-detection .
+# Run: docker run --gpus all -v ./data:/app/data ai-text-detection
+# Dev: docker-compose --profile dev up

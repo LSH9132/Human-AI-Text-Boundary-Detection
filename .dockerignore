@@ -1,0 +1,104 @@
+# Docker ignore file for AI Text Detection project
+# Excludes unnecessary files to optimize image size and build speed
+
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Python cache and compiled files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.coverage
+.tox/
+.cache
+.mypy_cache/
+
+# Virtual environments
+.venv/
+.env/
+venv/
+env/
+ENV/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Log files (will be created in container)
+*.log
+logs/*.log
+*.out
+*.err
+
+# Model files (will be created in container)
+models/*.pt
+models/*.pth
+models/*.bin
+models/*.safetensors
+
+# Training outputs (will be created in container)
+submissions/*.csv
+submission*.csv
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Large data files (mount as volume instead)
+data/train.csv
+data/test.csv
+data/*.csv
+
+# Documentation (keep only essential)
+DEVELOPMENT.md
+DATA_ANALYSIS.md
+COMPETITION.md
+IMBALANCE_IMPROVEMENT_PLAN.md
+CLI_GUIDE.md
+README_KR.md
+README_EN.md
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker files (don't need in container)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Shell scripts (except startup)
+startup_vast.sh
+install_*.py
+project_manager.py
+
+# Test files
+test_*.py
+simple_test.py
+
+# Legacy files
+main_legacy.py
+*_legacy.*
+legacy_*
+
+# Optimization logs
+gpu_*.log
+optimized_*.log

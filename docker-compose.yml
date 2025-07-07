@@ -1,0 +1,129 @@
+# AI Text Detection Docker Compose Configuration
+# 🚀 Easy deployment for development and production
+
+version: '3.8'
+
+services:
+  # Main training service
+  ai-text-detection:
+    build: .
+    image: ai-text-detection:latest
+    container_name: ai-text-detection-main
+    restart: unless-stopped
+    
+    # GPU configuration
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # Environment variables
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+      - TOKENIZERS_PARALLELISM=true
+      - HF_HOME=/app/cache/huggingface
+      - ENVIRONMENT=h100
+    
+    # Volume mounts
+    volumes:
+      - ./data:/app/data:ro                    # Data files (read-only)
+      - ./models:/app/models                   # Model checkpoints
+      - ./submissions:/app/submissions         # Prediction outputs
+      - ./logs:/app/logs                       # Training logs
+      - huggingface-cache:/app/cache/huggingface # HuggingFace cache
+    
+    # Port mapping (for monitoring if needed)
+    ports:
+      - "8080:8080"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import torch; print('GPU:', torch.cuda.is_available())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    # Command override options
+    command: ["./docker_startup.sh"]
+    
+    # Dependencies
+    depends_on:
+      - monitoring
+
+  # Development service for code editing
+  ai-text-detection-dev:
+    build: .
+    image: ai-text-detection:latest
+    container_name: ai-text-detection-dev
+    restart: "no"
+    profiles: ["dev"]
+    
+    # GPU configuration
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # Environment variables
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+      - TOKENIZERS_PARALLELISM=true
+      - HF_HOME=/app/cache/huggingface
+      - ENVIRONMENT=debug
+    
+    # Volume mounts (with source code)
+    volumes:
+      - ./src:/app/src                         # Source code (editable)
+      - ./scripts:/app/scripts                 # Scripts (editable)
+      - ./data:/app/data:ro                    # Data files (read-only)
+      - ./models:/app/models                   # Model checkpoints
+      - ./submissions:/app/submissions         # Prediction outputs
+      - ./logs:/app/logs                       # Training logs
+      - huggingface-cache:/app/cache/huggingface # HuggingFace cache
+    
+    # Interactive mode
+    stdin_open: true
+    tty: true
+    
+    # Override command for development
+    command: ["bash"]
+
+  # Monitoring service
+  monitoring:
+    image: nvidia/cuda:12.1-base-ubuntu22.04
+    container_name: ai-text-monitoring
+    restart: unless-stopped
+    
+    # GPU access for monitoring
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # Simple monitoring command
+    command: ["bash", "-c", "while true; do nvidia-smi; sleep 30; done"]
+    
+    # Volume for logs
+    volumes:
+      - ./logs:/logs
+
+# Named volumes
+volumes:
+  huggingface-cache:
+    driver: local
+
+# Networks (if needed for multi-container setup)
+networks:
+  default:
+    driver: bridge

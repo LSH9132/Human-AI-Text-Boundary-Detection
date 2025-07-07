@@ -16,11 +16,40 @@
 [![CUDA](https://img.shields.io/badge/CUDA-12.4+-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 🚀 Quick Start with vast.ai H100
+## 🚀 Quick Start with Docker (Recommended)
 
-### One-Click Deployment
+### 🐳 Docker One-Click Deployment
 ```bash
-# Clone and run on vast.ai H100 instance
+# Clone repository
+git clone https://github.com/LSH9132/Human-AI-Text-Boundary-Detection.git
+cd Human-AI-Text-Boundary-Detection
+
+# Build and run with Docker
+docker build -t ai-text-detection .
+docker run --gpus all -v ./data:/app/data -v ./submissions:/app/submissions ai-text-detection
+```
+
+### 🔧 Docker Development Mode
+```bash
+# Development with live code editing
+docker-compose --profile dev up
+# Interactive shell: docker exec -it ai-text-detection-dev bash
+```
+
+**Docker Benefits:**
+- 🛠️ **Zero Setup**: All dependencies pre-installed
+- 🔒 **Environment Isolation**: Consistent across different machines
+- 🚀 **Instant Deploy**: Works on any Docker-compatible platform
+- 📦 **Optimized**: Multi-stage build for minimal image size
+
+### 🌤️ Cloud Deployment (vast.ai, RunPod, etc.)
+
+#### vast.ai H100 Setup
+```bash
+# Method 1: Docker (Recommended)
+docker run --gpus all -v ./data:/app/data ai-text-detection
+
+# Method 2: Direct Installation
 git clone https://github.com/LSH9132/Human-AI-Text-Boundary-Detection.git
 cd Human-AI-Text-Boundary-Detection
 chmod +x startup_vast.sh
@@ -33,11 +62,11 @@ chmod +x startup_vast.sh
 - 💾 **Memory Usage**: ~50-60GB out of 80GB H100 memory
 - 💰 **Cost**: ~$4-8 total (vast.ai H100 rates)
 
-### vast.ai Setup Guide
-1. **Choose Template**: `pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel`
+#### Cloud Setup Guide
+1. **Choose Template**: `pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel` or use our Docker image
 2. **GPU**: H100 80GB (single GPU recommended)
 3. **Storage**: 50GB+ SSD
-4. **Run**: `./startup_vast.sh` after cloning
+4. **Run**: Docker container or `./startup_vast.sh` after cloning
 
 ---
 
@@ -85,6 +114,20 @@ graph TD
 
 ### 설치
 
+#### 🐳 Docker 설치 (권장)
+```bash
+# 저장소 클론
+git clone <repository-url>
+cd Human-AI-Text-Boundary-Detection
+
+# Docker 이미지 빌드
+docker build -t ai-text-detection .
+
+# 실행 (데이터 폴더 마운트)
+docker run --gpus all -v ./data:/app/data -v ./submissions:/app/submissions ai-text-detection
+```
+
+#### 🔧 로컬 설치
 ```bash
 # 저장소 클론
 git clone <repository-url>
@@ -102,8 +145,30 @@ pip install -r requirements.txt
 python -c "import torch; print(f'PyTorch: {torch.__version__}, CUDA: {torch.cuda.is_available()}')"
 ```
 
+#### 🐳 Docker 개발 모드
+```bash
+# 개발 환경 (코드 수정 가능)
+docker-compose --profile dev up
+
+# 컨테이너 접속
+docker exec -it ai-text-detection-dev bash
+```
+
 ### 기본 사용법
 
+#### 🐳 Docker 사용법
+```bash
+# 기본 H100 최적화 훈련
+docker run --gpus all -v ./data:/app/data -v ./submissions:/app/submissions ai-text-detection
+
+# 개발 모드 (코드 수정 가능)
+docker-compose --profile dev up
+
+# 커스텀 환경 설정
+docker run --gpus all -e ENVIRONMENT=debug -v ./data:/app/data ai-text-detection
+```
+
+#### 🔧 로컬 사용법
 ```bash
 # 빠른 테스트 (디버그 모드 - 고속)
 python main.py --env debug
@@ -113,6 +178,9 @@ python main.py --env cpu
 
 # GPU 훈련 (권장)
 python main.py --env gpu
+
+# H100 최적화 훈련
+python main.py --env h100
 
 # 커스텀 로깅
 python main.py --env gpu --log-level DEBUG

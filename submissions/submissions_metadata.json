@@ -1,0 +1,70 @@
+{
+  "submissions": [
+    {
+      "filename": "submission_20250707_175853_8bc6534.csv",
+      "timestamp": "20250707_175853",
+      "datetime": "2025-07-07T17:58:53.843132",
+      "description": "gpu environment - 3 fold ensemble",
+      "git_info": {
+        "commit_hash": "8bc6534",
+        "branch": "master",
+        "commit_message": "\ud83d\ude80 Add H100 support and vast.ai deployment automation\n\n- Add H100 environment configuration with optimized settings\n- Batch size 256, max_length 512 for H100's 80GB memory\n- Update requirements.txt for GPU compatibility\n- Create automated startup script for vast.ai deployment\n- Add comprehensive vast.ai usage guide to README\n- Expected performance: 1-2 hours training time on H100\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"
+      },
+      "submission_stats": {
+        "mean_prediction": 0.33705261062623093,
+        "std_prediction": 0.2713690522607188,
+        "min_prediction": 0.028372451694061357,
+        "max_prediction": 0.998673274119695,
+        "predictions_above_0.5": 539,
+        "predictions_below_0.5": 1423,
+        "total_samples": 1962
+      },
+      "config": {
+        "model": {
+          "model_name": "klue/bert-base",
+          "max_length": 256,
+          "num_labels": 1,
+          "dropout_rate": 0.1
+        },
+        "training": {
+          "batch_size": 32,
+          "learning_rate": 2e-05,
+          "epochs": 3,
+          "n_splits": 3,
+          "warmup_ratio": 0.1,
+          "weight_decay": 0.01,
+          "early_stopping_patience": 2,
+          "gradient_accumulation_steps": 1,
+          "context_weight": 0.3
+        },
+        "data": {
+          "train_file": "data/train.csv",
+          "test_file": "data/test.csv",
+          "sample_submission_file": "data/sample_submission.csv",
+          "submission_file": "submission.csv",
+          "submission_dir": "submissions",
+          "encoding": "utf-8-sig",
+          "min_paragraph_length": 20,
+          "max_paragraphs_per_document": 3
+        },
+        "system": {
+          "device": "cuda:1",
+          "num_workers": 8,
+          "pin_memory": true,
+          "mixed_precision": true,
+          "model_save_dir": "models",
+          "checkpoint_pattern": "best_model_fold_{fold}.pt",
+          "log_level": "INFO",
+          "log_file": "training.log",
+          "wandb_project": "ai-text-detection",
+          "wandb_enabled": false
+        }
+      },
+      "metrics": {
+        "oof_auc": 0.7448213365625872,
+        "model_count": 3
+      },
+      "file_size_mb": 0.055146217346191406
+    }
+  ]
+}
