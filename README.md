@@ -16,6 +16,31 @@
 [![CUDA](https://img.shields.io/badge/CUDA-12.4+-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+## 🚀 Quick Start with vast.ai H100
+
+### One-Click Deployment
+```bash
+# Clone and run on vast.ai H100 instance
+git clone https://github.com/LSH9132/Human-AI-Text-Boundary-Detection.git
+cd Human-AI-Text-Boundary-Detection
+chmod +x startup_vast.sh
+./startup_vast.sh
+```
+
+**Expected Performance on H100:**
+- ⚡ **Training Time**: 1-2 hours (vs 8+ hours on RTX A6000)
+- 🚄 **Speed**: ~8-12 it/s with batch size 256
+- 💾 **Memory Usage**: ~50-60GB out of 80GB H100 memory
+- 💰 **Cost**: ~$4-8 total (vast.ai H100 rates)
+
+### vast.ai Setup Guide
+1. **Choose Template**: `pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel`
+2. **GPU**: H100 80GB (single GPU recommended)
+3. **Storage**: 50GB+ SSD
+4. **Run**: `./startup_vast.sh` after cloning
+
+---
+
 ## 📋 프로젝트 개요
 
 본 프로젝트는 **한국어 텍스트에서 AI가 생성한 구간을 탐지**하는 최첨단 NLP 시스템입니다. KLUE/BERT를 기반으로 하여 97,000개 이상의 문서에서 추출한 114만개 이상의 문단 데이터로 훈련되며, 문서 수준의 컨텍스트를 고려한 지능형 예측을 수행합니다.

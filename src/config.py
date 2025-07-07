@@ -120,6 +120,16 @@ def get_config_for_environment(env: str = 'default') -> Config:
         config.system.device = 'cuda:1'  # Force GPU 1 for multi-GPU optimization
         config.training.batch_size = 32   # Increased from 16 for speed
         config.system.mixed_precision = True
+    elif env == 'h100':
+        # H100 optimization for vast.ai deployment
+        config.system.device = 'cuda'
+        config.training.batch_size = 256  # Utilize H100's 80GB memory
+        config.model.max_length = 512     # Restore full length for better performance
+        config.system.mixed_precision = True
+        config.system.num_workers = 16   # High-performance data loading
+        config.training.gradient_accumulation_steps = 1
+        config.data.max_paragraphs_per_document = 5  # Slightly more data
+        config.system.log_level = 'INFO'
     elif env == 'cpu':
         config.system.device = 'cpu'
         config.training.batch_size = 4
