@@ -62,14 +62,15 @@ class ModelTrainer:
     def train_epoch(self, model: nn.Module, train_loader: DataLoader,
                    optimizer: torch.optim.Optimizer, scheduler: torch.optim.lr_scheduler.LambdaLR,
                    criterion: nn.Module) -> float:
-        """Train model for one epoch."""
+        """Train model for one epoch with gradient accumulation."""
         model.train()
         total_loss = 0
         progress_bar = tqdm(train_loader, desc="Training")
         
-        for batch in progress_bar:
-            optimizer.zero_grad()
-            
+        # Get gradient accumulation steps from config
+        gradient_accumulation_steps = getattr(self.config.training, 'gradient_accumulation_steps', 1)
+        
+        for batch_idx, batch in enumerate(progress_bar):
             input_ids = batch['input_ids'].to(self.device)
             attention_mask = batch['attention_mask'].to(self.device)
             labels = batch['labels'].to(self.device)
@@ -81,13 +82,26 @@ class ModelTrainer:
             # Calculate loss
             loss = criterion(logits, labels)
             
+            # Scale loss by gradient accumulation steps
+            loss = loss / gradient_accumulation_steps
+            
             # Backward pass
             loss.backward()
+            
+            # Update weights every gradient_accumulation_steps
+            if (batch_idx + 1) % gradient_accumulation_steps == 0:
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+            
+            total_loss += loss.item() * gradient_accumulation_steps
+            progress_bar.set_postfix({'loss': loss.item() * gradient_accumulation_steps})
+        
+        # Final update if needed
+        if len(train_loader) % gradient_accumulation_steps != 0:
             optimizer.step()
             scheduler.step()
-            
-            total_loss += loss.item()
-            progress_bar.set_postfix({'loss': loss.item()})
+            optimizer.zero_grad()
         
         return total_loss / len(train_loader)
     
@@ -106,7 +120,11 @@ class ModelTrainer:
                 outputs = model(input_ids=input_ids, attention_mask=attention_mask)
                 preds = torch.sigmoid(outputs.logits.squeeze()).cpu().numpy()
                 
-                val_preds.extend(preds)
+                # Handle both scalar and array predictions
+                if preds.ndim == 0:
+                    val_preds.append(preds.item())
+                else:
+                    val_preds.extend(preds)
                 val_labels.extend(labels)
         
         auc_score = roc_auc_score(val_labels, val_preds)
@@ -138,7 +156,9 @@ class ModelTrainer:
         model = self.create_model()
         
         # Setup training components
-        total_steps = len(train_loader) * self.config.training.epochs
+        # Adjust total steps for gradient accumulation
+        gradient_accumulation_steps = getattr(self.config.training, 'gradient_accumulation_steps', 1)
+        total_steps = (len(train_loader) // gradient_accumulation_steps) * self.config.training.epochs
         optimizer, scheduler = self.create_optimizer_and_scheduler(model, total_steps)
         criterion = nn.BCEWithLogitsLoss()
         

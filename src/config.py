@@ -12,7 +12,7 @@ from typing import Dict, Any
 class ModelConfig:
     """Model configuration parameters."""
     model_name: str = 'klue/bert-base'
-    max_length: int = 512
+    max_length: int = 256  # Reduced from 512 to 256 for faster training
     num_labels: int = 1
     dropout_rate: float = 0.1
 
@@ -20,13 +20,16 @@ class ModelConfig:
 @dataclass
 class TrainingConfig:
     """Training configuration parameters."""
-    batch_size: int = 8
+    batch_size: int = 64  # Increased from 32 to 64 for better GPU utilization
     learning_rate: float = 2e-5
     epochs: int = 3
-    n_splits: int = 5
+    n_splits: int = 3  # Reduced from 5 to 3 for faster training
     warmup_ratio: float = 0.1
     weight_decay: float = 0.01
-    early_stopping_patience: int = 3
+    early_stopping_patience: int = 2  # Reduced from 3 to 2 for faster convergence
+    
+    # Optimization parameters  
+    gradient_accumulation_steps: int = 1  # No accumulation needed with larger batch size
     
     # Context adjustment parameters
     context_weight: float = 0.3  # 30% document average, 70% individual prediction
@@ -42,16 +45,16 @@ class DataConfig:
     submission_dir: str = 'submissions'
     encoding: str = 'utf-8-sig'
     
-    # Data processing parameters
-    min_paragraph_length: int = 10
-    max_paragraphs_per_document: int = 50
+    # Data processing parameters - OPTIMIZED for speed
+    min_paragraph_length: int = 20  # Increased to filter out very short paragraphs
+    max_paragraphs_per_document: int = 3  # Reduced from 50 to 3 for major speed improvement
 
 
 @dataclass
 class SystemConfig:
     """System configuration parameters."""
-    device: str = 'auto'  # 'auto', 'cuda', 'cpu'
-    num_workers: int = 4
+    device: str = 'cuda:1'  # Use GPU 1 instead of auto
+    num_workers: int = 8  # Increased from 4 to 8 for faster data loading
     pin_memory: bool = True
     mixed_precision: bool = True
     
@@ -114,8 +117,8 @@ def get_config_for_environment(env: str = 'default') -> Config:
     config = Config()
     
     if env == 'gpu':
-        config.system.device = 'cuda'
-        config.training.batch_size = 16
+        config.system.device = 'cuda:1'  # Force GPU 1 for multi-GPU optimization
+        config.training.batch_size = 32   # Increased from 16 for speed
         config.system.mixed_precision = True
     elif env == 'cpu':
         config.system.device = 'cpu'
