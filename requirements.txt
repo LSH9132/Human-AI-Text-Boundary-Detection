@@ -1,0 +1,36 @@
+# KLUE-BERT AI 텍스트 탐지 프로젝트 의존성
+
+# 핵심 머신러닝 라이브러리
+torch>=1.13.0
+transformers>=4.21.0
+tokenizers>=0.13.0
+
+# 데이터 처리
+pandas>=1.5.0
+numpy>=1.21.0
+scikit-learn>=1.1.0
+
+# 한국어 처리
+sentencepiece>=0.1.97
+
+# 설정 관리
+PyYAML>=6.0
+
+# 로깅 및 모니터링
+tqdm>=4.64.0
+
+# 유틸리티
+psutil>=5.9.0
+
+# GPU 지원 (선택사항)
+# torch-audio>=0.13.0+cu117  # CUDA 환경용
+# torch-vision>=0.14.0+cu117 # CUDA 환경용
+
+# 개발 및 테스트 (선택사항)
+pytest>=7.1.0
+black>=22.0.0
+flake8>=5.0.0
+
+# 성능 프로파일링 (선택사항)
+memory-profiler>=0.60.0
+line-profiler>=3.5.0
