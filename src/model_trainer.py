@@ -5,6 +5,7 @@ Handles model initialization, training, validation, and checkpointing.
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from transformers import (
     AutoTokenizer, 
@@ -23,6 +24,40 @@ from .config import Config
 from .data_processor import TextDataset
 
 
+class FocalLoss(nn.Module):
+    """Focal Loss for addressing class imbalance."""
+    
+    def __init__(self, alpha=1.0, gamma=2.0, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+    
+    def forward(self, inputs, targets):
+        # Calculate BCE loss
+        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        
+        # Calculate p_t
+        p_t = torch.exp(-bce_loss)
+        
+        # Calculate focal weight
+        focal_weight = (1 - p_t) ** self.gamma
+        
+        # Apply alpha weighting
+        if self.alpha is not None:
+            alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
+            focal_loss = alpha_t * focal_weight * bce_loss
+        else:
+            focal_loss = focal_weight * bce_loss
+        
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
+
 class ModelTrainer:
     """Main model training class."""
     
@@ -30,6 +65,14 @@ class ModelTrainer:
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.device = torch.device(config.system.device)
+        
+        # Multi-GPU setup
+        self.use_multi_gpu = config.system.use_multi_gpu and torch.cuda.device_count() > 1
+        if self.use_multi_gpu:
+            self.gpu_ids = config.system.gpu_ids
+            self.logger.info(f"Using Multi-GPU: {self.gpu_ids}")
+        else:
+            self.gpu_ids = [int(config.system.device.split(':')[1])] if 'cuda' in config.system.device else [0]
         
         # Initialize tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(config.model.model_name)
@@ -40,7 +83,14 @@ class ModelTrainer:
             self.config.model.model_name,
             num_labels=self.config.model.num_labels
         )
-        return model.to(self.device)
+        model = model.to(self.device)
+        
+        # Multi-GPU setup
+        if self.use_multi_gpu:
+            model = torch.nn.DataParallel(model, device_ids=self.gpu_ids)
+            self.logger.info(f"Model wrapped with DataParallel for GPUs: {self.gpu_ids}")
+        
+        return model
     
     def create_optimizer_and_scheduler(self, model: nn.Module, 
                                      total_steps: int) -> Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR]:
@@ -160,7 +210,26 @@ class ModelTrainer:
         gradient_accumulation_steps = getattr(self.config.training, 'gradient_accumulation_steps', 1)
         total_steps = (len(train_loader) // gradient_accumulation_steps) * self.config.training.epochs
         optimizer, scheduler = self.create_optimizer_and_scheduler(model, total_steps)
-        criterion = nn.BCEWithLogitsLoss()
+        
+        # Dynamic class imbalance handling
+        pos_count = sum(train_dataset.labels)
+        neg_count = len(train_dataset.labels) - pos_count
+        pos_weight = torch.tensor(neg_count / pos_count, device=self.device)
+        
+        # Choose loss function based on configuration
+        loss_type = getattr(self.config.training, 'loss_function', 'bce_weighted')
+        
+        if loss_type == 'focal':
+            # Focal Loss with alpha weighting for minority class
+            alpha = pos_count / (pos_count + neg_count)  # Weight for positive class
+            criterion = FocalLoss(alpha=alpha, gamma=2.0)
+            self.logger.info(f"Using Focal Loss with alpha={alpha:.3f}, gamma=2.0")
+        else:
+            # Weighted BCE Loss (default)
+            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            self.logger.info(f"Using Weighted BCE Loss with pos_weight={pos_weight.item():.1f}")
+        
+        self.logger.info(f"Class distribution - Negative: {neg_count}, Positive: {pos_count} (ratio: {pos_weight.item():.1f}:1)")
         
         # Training loop
         best_auc = 0
@@ -183,10 +252,18 @@ class ModelTrainer:
                 best_auc = val_auc
                 patience_counter = 0
                 
-                # Save model checkpoint
-                model_filename = self.config.system.checkpoint_pattern.format(fold=fold + 1)
+                # Save model checkpoint with model name
+                model_name_short = self.config.model.model_name.split('/')[-1].replace('-', '_')
+                model_filename = self.config.system.checkpoint_pattern.format(
+                    model_name=model_name_short, 
+                    fold=fold + 1
+                )
                 model_path = os.path.join(self.config.system.model_save_dir, model_filename)
-                torch.save(model.state_dict(), model_path)
+                # Save model state dict (handle DataParallel wrapper)
+                if self.use_multi_gpu:
+                    torch.save(model.module.state_dict(), model_path)
+                else:
+                    torch.save(model.state_dict(), model_path)
                 best_model_path = model_path
                 
                 self.logger.info(f"New best model saved: {model_path}")
@@ -204,18 +281,27 @@ class ModelTrainer:
         
         return best_auc, best_model_path
     
-    def cross_validate(self, train_data: List[str], train_labels: List[int]) -> Tuple[float, List[str]]:
+    def cross_validate(self, train_data: List[str], train_labels: List[int], 
+                      document_ids: Optional[List[str]] = None) -> Tuple[float, List[str]]:
         """Perform cross-validation training."""
         self.logger.info(f"Starting {self.config.training.n_splits}-fold cross-validation")
         
         # Setup cross-validation
-        skf = StratifiedKFold(n_splits=self.config.training.n_splits, shuffle=True, random_state=42)
+        if document_ids is not None:
+            # Document-aware cross-validation
+            self.logger.info("Using document-aware cross-validation")
+            splits = self._create_document_aware_splits(train_data, train_labels, document_ids)
+        else:
+            # Standard stratified cross-validation
+            self.logger.info("Using standard stratified cross-validation")
+            skf = StratifiedKFold(n_splits=self.config.training.n_splits, shuffle=True, random_state=42)
+            splits = list(skf.split(train_data, train_labels))
         
         fold_scores = []
         model_paths = []
         oof_predictions = np.zeros(len(train_data))
         
-        for fold, (train_idx, val_idx) in enumerate(skf.split(train_data, train_labels)):
+        for fold, (train_idx, val_idx) in enumerate(splits):
             self.logger.info(f"\n--- Fold {fold + 1}/{self.config.training.n_splits} ---")
             
             # Split data
@@ -260,6 +346,78 @@ class ModelTrainer:
         self.logger.info(f"OOF AUC: {oof_auc:.4f}")
         
         return oof_auc, model_paths
+    
+    def _create_document_aware_splits(self, train_data: List[str], train_labels: List[int], 
+                                     document_ids: List[str]) -> List[Tuple[List[int], List[int]]]:
+        """
+        Create document-aware cross-validation splits.
+        Ensures paragraphs from the same document don't appear in both train and validation sets.
+        """
+        import pandas as pd
+        
+        # Create DataFrame for easier manipulation
+        df = pd.DataFrame({
+            'text': train_data,
+            'label': train_labels,
+            'document_id': document_ids
+        })
+        
+        # Group by document
+        doc_groups = df.groupby('document_id')
+        
+        # Get document-level information
+        doc_info = []
+        for doc_id, group in doc_groups:
+            doc_label = group['label'].iloc[0]  # Assuming all paragraphs have same label
+            doc_indices = group.index.tolist()
+            doc_info.append({
+                'document_id': doc_id,
+                'label': doc_label,
+                'indices': doc_indices,
+                'size': len(doc_indices)
+            })
+        
+        # Sort by document size for better distribution
+        doc_info.sort(key=lambda x: x['size'], reverse=True)
+        
+        # Create balanced splits
+        splits = []
+        n_splits = self.config.training.n_splits
+        
+        for fold in range(n_splits):
+            # Initialize fold statistics
+            fold_stats = {'pos_count': 0, 'neg_count': 0, 'doc_count': 0}
+            fold_docs = []
+            
+            # Assign documents to folds in round-robin fashion
+            for i, doc in enumerate(doc_info):
+                if i % n_splits == fold:
+                    fold_docs.append(doc)
+                    fold_stats['doc_count'] += 1
+                    if doc['label'] == 1:
+                        fold_stats['pos_count'] += len(doc['indices'])
+                    else:
+                        fold_stats['neg_count'] += len(doc['indices'])
+            
+            # Get validation indices for this fold
+            val_indices = []
+            for doc in fold_docs:
+                val_indices.extend(doc['indices'])
+            
+            # Get training indices (all other documents)
+            train_indices = []
+            for i, doc in enumerate(doc_info):
+                if i % n_splits != fold:
+                    train_indices.extend(doc['indices'])
+            
+            splits.append((train_indices, val_indices))
+            
+            # Log fold statistics
+            val_pos_ratio = fold_stats['pos_count'] / (fold_stats['pos_count'] + fold_stats['neg_count'])
+            self.logger.info(f"Fold {fold + 1}: {fold_stats['doc_count']} docs, "
+                           f"{len(val_indices)} paragraphs, pos_ratio={val_pos_ratio:.3f}")
+        
+        return splits
     
     def load_model(self, model_path: str) -> AutoModelForSequenceClassification:
         """Load a trained model from checkpoint."""
