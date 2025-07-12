@@ -29,14 +29,54 @@ class Predictor:
         self.tokenizer = AutoTokenizer.from_pretrained(config.model.model_name)
     
     def load_model(self, model_path: str) -> AutoModelForSequenceClassification:
-        """Load a trained model from checkpoint."""
+        """Load a trained model from checkpoint with automatic model type detection."""
+        import json
+        import os
+        
+        # Try to get model info from metadata file
+        model_name = self.config.model.model_name  # Default
+        
+        # Look for improved_training_metrics.json in models directory
+        models_dir = os.path.dirname(model_path) if os.path.dirname(model_path) else "models"
+        metadata_path = os.path.join(models_dir, "improved_training_metrics.json")
+        
+        if os.path.exists(metadata_path):
+            try:
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                    if 'config' in metadata and 'model' in metadata['config']:
+                        metadata_model_name = metadata['config']['model']['model_name']
+                        self.logger.info(f"🔍 Found model metadata: {metadata_model_name}")
+                        model_name = metadata_model_name
+            except Exception as e:
+                self.logger.warning(f"⚠️ Could not read metadata file: {e}")
+        
+        # Fallback: inspect checkpoint keys if metadata not available
+        if model_name == self.config.model.model_name:
+            try:
+                checkpoint = torch.load(model_path, map_location='cpu')
+                if any('electra' in key for key in checkpoint.keys()):
+                    model_name = "monologg/koelectra-base-v3-discriminator"
+                    self.logger.info("🔍 Auto-detected KoELECTRA from checkpoint keys")
+                elif any('bert' in key for key in checkpoint.keys()):
+                    self.logger.info("🔍 Auto-detected BERT from checkpoint keys")
+            except Exception as e:
+                self.logger.warning(f"⚠️ Could not inspect checkpoint: {e}")
+        
+        self.logger.info(f"📋 Loading model with architecture: {model_name}")
+        
+        # Create model with correct architecture
         model = AutoModelForSequenceClassification.from_pretrained(
-            self.config.model.model_name,
+            model_name,
             num_labels=self.config.model.num_labels
         ).to(self.device)
         
-        model.load_state_dict(torch.load(model_path, map_location=self.device))
+        # Load weights
+        checkpoint = torch.load(model_path, map_location=self.device)
+        model.load_state_dict(checkpoint)
         model.eval()
+        
+        self.logger.info(f"✅ Successfully loaded model: {os.path.basename(model_path)}")
         return model
     
     def predict_batch(self, model: nn.Module, texts: List[str]) -> List[float]:
@@ -84,7 +124,6 @@ class Predictor:
             
             # Calculate document-level average
             doc_avg = np.mean(individual_preds)
-            
             # Apply context adjustment
             adjusted_preds = []
             for pred in individual_preds:
